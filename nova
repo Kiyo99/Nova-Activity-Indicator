@@ -1,0 +1,118 @@
+const { Octokit } = require("@octokit/rest");
+
+const token = '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' //API token.
+const owner = 'openstack';
+const repo = 'nova';
+const per_page = 100; 
+const commitResult = [];//The json that stores the final results of commits
+const churnResult = [];//The json that stores the final results of churn
+
+const startDate = '2021-11-01T00:00:00Z';//The date provided is six months from the month of the initial submission of this script
+
+const arr = ["nova/accelerator", "nova/api", "nova/cmd", "nova/compute", "nova/conductor", "nova/conf", "nova/console", "nova/db", "nova/hacking", "nova/image", "nova/keymgr", "nova/limit", "nova/locale", "nova/network", "nova/notifications", "nova/objects", "nova/pci", "nova/policies", "nova/privsep", "nova/releasenotes/notes", "nova/scheduler", "nova/servicegroup", "nova/storage", "nova/tests", "nova/virt", "nova/volume"];
+var shaa = [];
+var initialChurn = [0];//An array to hold the initial values of all additions and deletions
+
+
+const octokit = new Octokit({
+  auth: token,
+});
+
+getCommit();
+
+async function getCommit() {
+  for await (const path of arr) {
+    var initialCommit = [0];//This array holds the values of the initial number of commits.
+    var page = 1;
+    var completed = false;//This bool is set to true when the response returns an empty array, which makes the loop break
+    var finalChurn; //The variable that holds the final value of churn
+
+    while (!completed) {
+      await octokit.request('GET /repos/{owner}/{repo}/commits?per_page={per_page}&page={page}&since={startDate}&path={path}', {
+        owner: owner,
+        repo: repo,
+        per_page: per_page,
+        page: page,
+        path: path,
+        startDate: startDate
+      }).then(async ({ data }) => {
+        var j = data;
+
+        if (j.length == 0) {
+          // console.log(`End of page reached on page ${page}`);
+          completed = true;
+        }
+        else {
+          initialCommit.push(j.length);
+          for (var g = 0; g < j.length; g++) {
+            shaa.push(j[g]["sha"]);
+            await getChurn(path);
+            shaa = [];
+          }
+        }
+      }).catch((err) => console.log('Err: ', err));
+      page++;
+    }
+
+    if (initialChurn.length === 0 || initialChurn == undefined) {
+      finalChurn = 0;
+    }
+    else {
+      finalChurn = initialChurn.reduce((prev, current, index, arr) => prev + current);
+    }
+    initialChurn = [];
+    churnResult.push({ path, Churn: finalChurn });
+    // console.log(`The initialChurn sum of additions and deletions that occured during the period in ${path} is ${finalChurn}`);
+
+
+    const finalCommit = initialCommit.reduce((prev, current, index, arr) => prev + current);
+    commitResult.push({ path, commits: finalCommit });
+    // console.log(`The sum of commits in the ${path} module within the nova subdirectory is ${finalCommit}`);
+  }
+
+  //Adding all values in the churnResult array
+  churnResult.sort(function (a, b) {
+    return b.Churn - a.Churn;
+  });
+  console.log(churnResult);
+
+  //Adding all values in the commitResult array
+  commitResult.sort(function (a, b) {
+    return b.commits - a.commits;
+  });
+  console.log(commitResult);
+
+  console.log(`The 12 most active modules by commits are: `)
+  for (let index = 0; index < 12; index++) {
+    console.log(commitResult[index]);
+  }
+
+  console.log(`The 12 most active modules by churn are: `)
+  for (let index = 0; index < 12; index++) {
+    console.log(churnResult[index]);
+  }
+}
+
+//Function for getting the churn (number of additions and deletions)
+async function getChurn(path) {
+  for await (const ref of shaa) {
+    await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+      owner: owner,
+      repo: repo,
+      ref: ref,
+    }).then(({ data }) => {
+      var j = data;
+      aggr = 0 //The variable that accumulates the number of file changes
+      for (let index = 0; index < j['files'].length; index++) {
+        const file = j['files'][index];
+        if (file['filename'].includes(path)) {
+          // console.log(`File: ${file['filename']} and Path: ${path}`);
+          aggr += file['changes'];
+        }
+      }
+      initialChurn.push(aggr);
+      aggr = 0;
+    });
+  }
+
+}
