@@ -1,6 +1,6 @@
 const { Octokit } = require("@octokit/rest");
 
-const token = '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' //API token.
+const token = '' //API token should go here, a Github personal token would be perfect.
 const owner = 'openstack';
 const repo = 'nova';
 const per_page = 100; 
@@ -9,8 +9,7 @@ const churnResult = [];//The json that stores the final results of churn
 
 const startDate = '2021-11-01T00:00:00Z';//The date provided is six months from the month of the initial submission of this script
 
-const arr = ["nova/volume"];
-// "nova/accelerator", "nova/api", "nova/cmd", "nova/compute", "nova/conductor", "nova/conf", "nova/console", "nova/db", "nova/hacking", "nova/image", "nova/keymgr", "nova/limit", "nova/locale", "nova/network", "nova/notifications", "nova/objects", "nova/pci", "nova/policies", "nova/privsep", "nova/releasenotes/notes", "nova/scheduler", "nova/servicegroup", "nova/storage",
+const arr = ["nova/accelerator", "nova/api", "nova/cmd", "nova/compute", "nova/conductor", "nova/conf", "nova/console", "nova/db", "nova/hacking", "nova/image", "nova/keymgr", "nova/limit", "nova/locale", "nova/network", "nova/notifications", "nova/objects", "nova/pci", "nova/policies", "nova/privsep", "nova/releasenotes/notes", "nova/scheduler", "nova/servicegroup", "nova/storage", "nova/tests", "nova/virt", "nova/volume"];
 var shaa = [];
 var initialChurn = [0];//An array to hold the initial values of all additions and deletions
 
